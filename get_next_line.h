@@ -20,4 +20,12 @@
 # define BUFF_SIZE 100
 
 int		get_next_line(const int fd, char **line);
+
+typedef	struct			g_cont
+{
+	struct g_cont		*next;
+	char			*data;
+	int			fd;
+}				gnl;
+
 #endif
