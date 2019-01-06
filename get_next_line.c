@@ -1,109 +1,144 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   get_next_line.c                                    :+:      :+:    :+:   */
+/*   get_next_line_ll.c                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: spoole <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2018/12/17 17:34:07 by spoole            #+#    #+#             */
-/*   Updated: 2018/12/21 14:19:20 by spoole           ###   ########.fr       */
+/*   Created: 2019/01/02 15:45:21 by spoole            #+#    #+#             */
+/*   Updated: 2019/01/06 13:45:05 by spoole           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
-char	*ft_gnl_strjoin(char *s1)
+t_gnl	*initialize_fd(int fd, t_gnl *begin)
 {
-	char	*result;
-	char	*clean;
-	int		i;
+	t_gnl	*result;
 
-	i = 0;
-	clean = s1;
-	result = (char*)malloc(sizeof(char) * (BUFF_SIZE + ft_strlen(s1) + 1));
-	if (result == NULL)
-		return (NULL);
-	while (s1[i] != '\0')
+	result = begin;
+	if (result != NULL)
 	{
-		result[i] = s1[i];
-		i++;
+		while (result != NULL && result->fd != fd)
+			result = result->next;
 	}
-	result[i + BUFF_SIZE] = '\0';
-	free(s1);
+	if (result == NULL)
+	{
+		result = (t_gnl*)malloc(sizeof(t_gnl));
+		result->next = NULL;
+		result->data = (char*)malloc(sizeof(char) * (BUFF_SIZE + 1));
+		ft_bzero(result->data, BUFF_SIZE + 1);
+		result->fd = fd;
+		result->clean = NULL;
+		result->i = read(fd, &result->data[0], BUFF_SIZE);
+		if (begin != NULL)
+		{
+			while (begin->next != NULL)
+				begin = begin->next;
+			begin->next = result;
+		}
+	}
 	return (result);
 }
 
-int		nextline(char *str)
+char	*read_fd(t_gnl *temp, char *result, int c, int q)
 {
-	int i;
+	int	x;
 
-	i = 0;
-	while (str[i] != '\0')
+	if (q == 1)
 	{
-		if (str[i] == '\n')
-			return (i);
-		i++;
+		x = temp->i;
+		temp->data = ft_strbuf(temp->data, BUFF_SIZE);
+		x = read(temp->fd, &temp->data[c], BUFF_SIZE);
+		if (x != 0)
+			temp->i += x;
+		else
+			temp->i = 0;
 	}
-	return (0);
+	else if (q == 2)
+	{
+		result = ft_strsub(temp->data, 0, c);
+		if (temp->data[c] == '\n')
+		{
+			temp->i -= ft_strlen(result);
+			temp->data = ft_strsub(temp->data,
+			c + 1, ft_strlen(temp->data));
+		}
+		else
+			temp->data = NULL;
+	}
+	return (result);
 }
 
-char	*init_temp(char *temp, int *i, int *x)
+char	*read_to_nl(t_gnl *temp)
 {
-	if (temp != NULL)
-		temp = ft_gnl_strjoin(temp);
+	int		c;
+	int		x;
+	char	*result;
+
+	c = 0;
+	result = NULL;
+	while (c >= 0)
+	{
+		x = temp->i;
+		while (temp->data[c] != '\0' && temp->data[c] != '\n')
+			c++;
+		if (temp->data[c] == '\0' && temp->i != 0)
+			read_fd(temp, result, c, 1);
+		else
+		{
+			temp->clean = temp->data;
+			result = read_fd(temp, result, c, 2);
+			free(temp->clean);
+			temp->clean = NULL;
+			c = -1;
+		}
+	}
+	return (result);
+}
+
+void	close_gnl(t_gnl *begin, t_gnl *temp)
+{
+	t_gnl	*clean;
+
+	clean = NULL;
+	if (temp == begin)
+		begin = temp->next;
 	else
 	{
-		temp = (char*)malloc(sizeof(char) * BUFF_SIZE + 1);
-		temp[BUFF_SIZE] = '\0';
-		*i = 0;
-		*x = 1;
+		clean = begin;
+		while (clean->next != temp)
+			clean = clean->next;
+		clean->next = temp->next;
 	}
-	return (temp);
-}
-
-char	*handle_newline(char *temp, char **line, int check, int *i)
-{
-	char	*clean;
-	clean = temp;
-	*line = ft_strsub(temp, 0, check);
-	temp = ft_strsub(temp, check + 1, ft_strlen(temp + check));
-	free(clean);
-	*i = ft_strlen(temp);
-	return (temp);
+	free(temp);
 }
 
 int		get_next_line(const int fd, char **line)
 {
-	static char	*temp;
-	static int	i;
-	int			x;
-	int			check;
+	static	t_gnl	*begin;
+	t_gnl			*temp;
+	char			*result;
 
-	check = 0;
-	temp = init_temp(temp, &i, &x);
-	if (temp == NULL)
+	temp = NULL;
+	result = NULL;
+	if (fd < 0 || line == NULL)
 		return (-1);
-	while (check == 0)
+	temp = initialize_fd(fd, begin);
+	if (temp->i < 0)
+		return (-1);
+	else if (begin == NULL)
+		begin = temp;
+	if (temp->i != 0)
 	{
-		x = read(fd, &temp[i], BUFF_SIZE);
-		if (x != 0)
-			i += BUFF_SIZE;
-		check = nextline(temp);
-		if (x == 0)
-		{
-			if (check != 0)
-			{
-				temp = handle_newline(temp, line++, check, &i);
-				return (1);
-			}
-			else
-				*line = temp;
-			return (0);
-		}
-		else if (check != 0)
-			temp = handle_newline(temp, line, check, &i);
-		else
-			temp = ft_gnl_strjoin(temp);
+		result = read_to_nl(temp);
+		if (*result != '\0' || temp->i > 0)
+			*line = result;
+	}
+	if (temp->i == 0 && (result == NULL || *result == '\0'))
+	{
+		close_gnl(begin, temp);
+		return (0);
 	}
 	return (1);
 }

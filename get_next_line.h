@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   get_next_line.h                                    :+:      :+:    :+:   */
+/*   get_next_line_ll.h                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: spoole <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2018/12/17 17:35:10 by spoole            #+#    #+#             */
-/*   Updated: 2018/12/20 15:18:27 by spoole           ###   ########.fr       */
+/*   Created: 2019/01/02 15:45:21 by spoole            #+#    #+#             */
+/*   Updated: 2019/01/06 13:45:05 by spoole           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,11 +21,13 @@
 
 int		get_next_line(const int fd, char **line);
 
-typedef	struct			g_cont
+typedef	struct			s_gnl
 {
-	struct g_cont		*next;
-	char			*data;
-	int			fd;
-}				gnl;
+	struct s_gnl		*next;
+	char				*data;
+	char				*clean;
+	int					fd;
+	int					i;
+}						t_gnl;
 
 #endif
